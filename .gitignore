@@ -1,0 +1,49 @@
+# =================================
+# Secrets and environment variables
+# =================================
+.env
+.env.*
+!.env.example
+
+# =================================
+# Java / Spring Boot
+# =================================
+*.class
+*.jar
+*.war
+*.log
+
+.gradle/
+build/
+target/
+out/
+
+# =================================
+# IntelliJ IDEA
+# =================================
+.idea/
+*.iml
+
+# =================================
+# Frontend / Node.js
+# =================================
+node_modules/
+dist/
+coverage/
+.next/
+
+# =================================
+# Operating system
+# =================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =================================
+# Local database files and backups
+# =================================
+*.sqlite
+*.sqlite3
+*.sql.gz
+*.dump
+pgdata/
