@@ -1,0 +1,2 @@
+ALTER TABLE media
+    ADD COLUMN last_synced_at TIMESTAMP WITH TIME ZONE;
