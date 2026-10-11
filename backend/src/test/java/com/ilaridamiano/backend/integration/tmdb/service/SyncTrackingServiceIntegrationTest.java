@@ -149,4 +149,59 @@ class SyncTrackingServiceIntegrationTest {
         }
     }
 
+    @Test
+    void disablesSynchronizationAfterPermanentFailure() {
+
+        Media movie = mediaRepository.saveAndFlush(
+                new Media("Permanent Failure Test Movie", MediaType.MOVIE)
+        );
+
+        MediaExternalId externalId = externalIdRepository.saveAndFlush(
+                new MediaExternalId(
+                        movie, "TMDB", "MOVIE", "990003"
+                )
+        );
+
+        try {
+            // First, simulate a temporary failure.
+            trackingService.recordFailure(externalId.getId());
+
+            MediaExternalId afterTemporaryFailure = externalIdRepository
+                    .findById(externalId.getId())
+                    .orElseThrow();
+
+            assertThat(afterTemporaryFailure.getSyncFailureCount())
+                    .isEqualTo(1);
+
+            assertThat(afterTemporaryFailure.getNextSyncAttemptAt())
+                    .isNotNull();
+
+            assertThat(afterTemporaryFailure.isSyncDisabled())
+                    .isFalse();
+
+            // Now simulate a permanent failure (e.g. TMDB returns 404).
+            trackingService.recordPermanentFailure(externalId.getId());
+
+            MediaExternalId afterPermanentFailure = externalIdRepository
+                    .findById(externalId.getId())
+                    .orElseThrow();
+
+            assertThat(afterPermanentFailure.getSyncFailureCount())
+                    .isEqualTo(2);
+
+            assertThat(afterPermanentFailure.getLastSyncAttemptAt())
+                    .isEqualTo(Instant.parse("2026-10-11T12:00:00Z"));
+
+            assertThat(afterPermanentFailure.getNextSyncAttemptAt())
+                    .isNull();
+
+            assertThat(afterPermanentFailure.isSyncDisabled())
+                    .isTrue();
+
+        } finally {
+            externalIdRepository.deleteById(externalId.getId());
+            mediaRepository.deleteById(movie.getId());
+        }
+    }
+
 }

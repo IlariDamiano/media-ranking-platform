@@ -57,4 +57,23 @@ public class SyncTrackingService {
         externalId.setSyncFailureCount(0);
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordPermanentFailure(UUID externalIdRecordId) {
+
+        MediaExternalId externalId = externalIdRepository
+                .findById(externalIdRecordId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "External ID record not found: " + externalIdRecordId
+                ));
+
+        Instant now = clock.instant();
+
+        externalId.setLastSyncAttemptAt(now);
+        externalId.setSyncFailureCount(
+                externalId.getSyncFailureCount() + 1
+        );
+        externalId.setNextSyncAttemptAt(null);
+        externalId.setSyncDisabled(true);
+    }
+
 }

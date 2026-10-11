@@ -1,19 +1,22 @@
 
 package com.ilaridamiano.backend.integration.tmdb.service;
 
-import com.ilaridamiano.backend.catalog.repository.MediaRepository;
-import com.ilaridamiano.backend.catalog.repository.MediaExternalIdRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import com.ilaridamiano.backend.catalog.entity.Media;
+import com.ilaridamiano.backend.catalog.entity.MediaExternalId;
 import com.ilaridamiano.backend.catalog.enums.MediaType;
+import com.ilaridamiano.backend.catalog.repository.MediaExternalIdRepository;
+import com.ilaridamiano.backend.catalog.repository.MediaRepository;
+import com.ilaridamiano.backend.integration.tmdb.exception.TmdbPermanentException;
+import com.ilaridamiano.backend.integration.tmdb.exception.TmdbRateLimitException;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import com.ilaridamiano.backend.catalog.entity.MediaExternalId;
+import org.springframework.stereotype.Service;
+
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -81,7 +84,9 @@ public class TmdbSyncService {
                 continue;
             }
 
+
             boolean refreshSucceeded = false;
+            boolean permanentFailure = false;
 
             try {
                 Long tmdbId = Long.valueOf(externalId.getExternalId());
@@ -90,6 +95,26 @@ public class TmdbSyncService {
 
                 successfulRefreshes++;
                 refreshSucceeded = true;
+
+            } catch (TmdbPermanentException exception) {
+                permanentFailure = true;
+
+                log.error(
+                        "TMDB movie permanently unavailable for media {}",
+                        movie.getId(),
+                        exception
+                );
+
+            } catch (TmdbRateLimitException exception) {
+
+                log.warn(
+                        "TMDB rate limit reached while synchronizing media {}. Stopping batch.",
+                        movie.getId(),
+                        exception
+                );
+
+                break;
+
 
             } catch (Exception exception) {
                 log.error(
@@ -102,6 +127,12 @@ public class TmdbSyncService {
             try {
                 if (refreshSucceeded) {
                     syncTrackingService.recordSuccess(externalId.getId());
+
+                } else if (permanentFailure) {
+                    syncTrackingService.recordPermanentFailure(
+                            externalId.getId()
+                    );
+
                 } else {
                     syncTrackingService.recordFailure(externalId.getId());
                 }
@@ -117,7 +148,4 @@ public class TmdbSyncService {
 
         return successfulRefreshes;
     }
-
-
-
 }
