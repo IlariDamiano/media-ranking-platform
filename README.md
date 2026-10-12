@@ -57,12 +57,13 @@ This project is both a personal learning experience and a professional portfolio
 - Exponential retry backoff
 - Persistent synchronization failure tracking
 - Permanent disabling of missing TMDB records after HTTP 404
+- HTTP 401 authentication-error detection and batch interruption
 - HTTP 429 rate-limit detection
 - Provider-wide cooldown tracking stored in PostgreSQL
 - Batch interruption when TMDB rate limits requests
 - Cooldown checks before starting synchronization batches
 
-Automatic background scheduling is not enabled yet. Additional authentication-error handling and concurrency safeguards are still in development.
+Automatic background scheduling is not enabled yet. Persistent provider-level blocking after authentication failures and concurrency safeguards are still in development.
 
 ### Testing
 - Unit tests for business logic and error handling

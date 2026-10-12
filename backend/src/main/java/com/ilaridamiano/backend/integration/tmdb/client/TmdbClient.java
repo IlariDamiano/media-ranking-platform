@@ -9,6 +9,7 @@ import com.ilaridamiano.backend.integration.tmdb.dto.TmdbMovieResponse;
 import com.ilaridamiano.backend.integration.tmdb.exception.TmdbPermanentException;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.web.client.RestClient;
+import com.ilaridamiano.backend.integration.tmdb.exception.TmdbAuthenticationException;
 
 @Component
 public class TmdbClient {
@@ -36,6 +37,14 @@ public class TmdbClient {
         return restClient.get()
                 .uri("/movie/{movieId}", movieId)
                 .retrieve()
+                .onStatus(
+                        status -> status.value() == 401,
+                        (request, response) -> {
+                            throw new TmdbAuthenticationException(
+                                    "TMDB authentication failed (HTTP 401)"
+                            );
+                        }
+                )
                 .onStatus(
                         status -> status.value() == 404,
                         (request, response) -> {

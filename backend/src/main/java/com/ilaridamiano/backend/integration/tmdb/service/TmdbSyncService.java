@@ -14,9 +14,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-
+import com.ilaridamiano.backend.integration.sync.service.ProviderCooldownService;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import com.ilaridamiano.backend.integration.tmdb.exception.TmdbAuthenticationException;
 
 @Service
 @RequiredArgsConstructor
@@ -27,14 +28,11 @@ public class TmdbSyncService {
     private final MediaExternalIdRepository externalIdRepository;
     private final TmdbImportService tmdbImportService;
     private final SyncTrackingService syncTrackingService;
+    private final ProviderCooldownService providerCooldownService;
 
     public Page<Media> findOutdatedMovies(int batchSize) {
 
-        if (batchSize < 1 || batchSize > 100) {
-            throw new IllegalArgumentException(
-                    "Batch size must be between 1 and 100"
-            );
-        }
+        validateBatchSize(batchSize);
 
         Instant now = Instant.now();
         Instant cutoff = now.minus(7, ChronoUnit.DAYS);
@@ -57,6 +55,15 @@ public class TmdbSyncService {
     }
 
     public int syncOutdatedMovies(int batchSize) {
+
+        validateBatchSize(batchSize);
+
+        if (!providerCooldownService.isProviderAvailable("TMDB")) {
+            log.info(
+                    "Skipping TMDB synchronization: provider cooldown is active"
+            );
+            return 0;
+        }
 
         Page<Media> batch = findOutdatedMovies(batchSize);
 
@@ -105,6 +112,16 @@ public class TmdbSyncService {
                         exception
                 );
 
+            } catch (TmdbAuthenticationException exception) {
+
+                log.error(
+                        "TMDB authentication failed while synchronizing media {}. Stopping batch.",
+                        movie.getId(),
+                        exception
+                );
+
+                break;
+
             } catch (TmdbRateLimitException exception) {
 
                 log.warn(
@@ -113,7 +130,18 @@ public class TmdbSyncService {
                         exception
                 );
 
+                try {
+                    providerCooldownService.recordRateLimit("TMDB");
+
+                } catch (Exception trackingException) {
+                    log.error(
+                            "Failed to persist TMDB provider cooldown",
+                            trackingException
+                    );
+                }
+
                 break;
+
 
 
             } catch (Exception exception) {
@@ -147,5 +175,13 @@ public class TmdbSyncService {
         }
 
         return successfulRefreshes;
+    }
+
+    private static void validateBatchSize(int batchSize) {
+        if (batchSize < 1 || batchSize > 100) {
+            throw new IllegalArgumentException(
+                    "Batch size must be between 1 and 100"
+            );
+        }
     }
 }

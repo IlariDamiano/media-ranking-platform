@@ -8,7 +8,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
-
+import com.ilaridamiano.backend.integration.tmdb.exception.TmdbAuthenticationException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -69,4 +69,30 @@ class TmdbClientHttpErrorTest {
         server.verify();
     }
 
+    @Test
+    void throwsAuthenticationExceptionWhenTmdbReturns401() {
+
+        // Arrange: create a client with a mocked HTTP server.
+        RestClient.Builder builder = RestClient.builder()
+                .baseUrl("https://api.themoviedb.org/3");
+
+        MockRestServiceServer server = MockRestServiceServer
+                .bindTo(builder)
+                .build();
+
+        TmdbClient client = new TmdbClient(builder.build());
+
+        // Simulate TMDB rejecting our credentials.
+        server.expect(requestTo(
+                        "https://api.themoviedb.org/3/movie/27205"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withStatus(HttpStatus.UNAUTHORIZED));
+
+        // Verify that our custom authentication exception is thrown.
+        assertThatThrownBy(() -> client.getMovie(27205L))
+                .isInstanceOf(TmdbAuthenticationException.class)
+                .hasMessageContaining("authentication failed");
+
+        server.verify();
+    }
 }

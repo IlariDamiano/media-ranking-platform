@@ -147,9 +147,14 @@ The synchronization system distinguishes several outcomes:
 
 **HTTP 404:** Treat the TMDB movie as permanently unavailable and disable future automatic synchronization for that external identity.
 
+**HTTP 401:** Stop the synchronization batch when TMDB
+rejects authentication credentials. Do not record an
+individual movie failure or create a rate-limit cooldown.
+
 **HTTP 429:** Attempt to persist a provider-wide cooldown and stop the current batch.
 
-Provider authentication errors and additional concurrency controls are still being developed.
+Persistent provider-level authentication blocking and
+additional concurrency controls are still being developed.
 
 ## 7. Transaction Management
 

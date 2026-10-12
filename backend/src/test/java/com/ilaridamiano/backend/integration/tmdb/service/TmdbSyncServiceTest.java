@@ -15,11 +15,13 @@ import com.ilaridamiano.backend.integration.tmdb.exception.TmdbRateLimitExceptio
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
+import com.ilaridamiano.backend.integration.sync.service.ProviderCooldownService;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+import com.ilaridamiano.backend.integration.tmdb.exception.TmdbAuthenticationException;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TmdbSyncServiceTest {
 
@@ -31,12 +33,15 @@ class TmdbSyncServiceTest {
                 mock(MediaExternalIdRepository.class);
         TmdbImportService importService = mock(TmdbImportService.class);
         SyncTrackingService trackingService = mock(SyncTrackingService.class);
+        ProviderCooldownService cooldownService =
+                mock(ProviderCooldownService.class);
 
         TmdbSyncService syncService = new TmdbSyncService(
                 mediaRepository,
                 externalIdRepository,
                 importService,
-                trackingService
+                trackingService,
+                cooldownService
         );
 
         Media movie = new Media("Interstellar", MediaType.MOVIE);
@@ -64,6 +69,9 @@ class TmdbSyncServiceTest {
                 ))
                 .thenReturn(Optional.of(externalId));
 
+        when(cooldownService.isProviderAvailable("TMDB"))
+                .thenReturn(true);
+
         int refreshedCount = syncService.syncOutdatedMovies(10);
 
         assertThat(refreshedCount).isEqualTo(1);
@@ -82,12 +90,14 @@ class TmdbSyncServiceTest {
                 mock(MediaExternalIdRepository.class);
         TmdbImportService importService = mock(TmdbImportService.class);
         SyncTrackingService trackingService = mock(SyncTrackingService.class);
-
+        ProviderCooldownService cooldownService =
+                mock(ProviderCooldownService.class);
         TmdbSyncService syncService = new TmdbSyncService(
                 mediaRepository,
                 externalIdRepository,
                 importService,
-                trackingService
+                trackingService,
+                cooldownService
         );
 
         Media firstMovie = new Media("Interstellar", MediaType.MOVIE);
@@ -130,6 +140,9 @@ class TmdbSyncServiceTest {
                 .when(importService)
                 .refreshMovie(157336L);
 
+        when(cooldownService.isProviderAvailable("TMDB"))
+                .thenReturn(true);
+
         int refreshedCount = syncService.syncOutdatedMovies(2);
 
         assertThat(refreshedCount).isEqualTo(1);
@@ -148,12 +161,15 @@ class TmdbSyncServiceTest {
                 mock(MediaExternalIdRepository.class);
         TmdbImportService importService = mock(TmdbImportService.class);
         SyncTrackingService trackingService = mock(SyncTrackingService.class);
+        ProviderCooldownService cooldownService =
+                mock(ProviderCooldownService.class);
 
         TmdbSyncService syncService = new TmdbSyncService(
                 mediaRepository,
                 externalIdRepository,
                 importService,
-                trackingService
+                trackingService,
+                cooldownService
         );
 
         Media movie = new Media("Missing Movie", MediaType.MOVIE);
@@ -187,6 +203,9 @@ class TmdbSyncServiceTest {
                 .when(importService)
                 .refreshMovie(999999L);
 
+        when(cooldownService.isProviderAvailable("TMDB"))
+                .thenReturn(true);
+
         int refreshedCount = syncService.syncOutdatedMovies(10);
 
         assertThat(refreshedCount).isZero();
@@ -205,12 +224,15 @@ class TmdbSyncServiceTest {
                 mock(MediaExternalIdRepository.class);
         TmdbImportService importService = mock(TmdbImportService.class);
         SyncTrackingService trackingService = mock(SyncTrackingService.class);
+        ProviderCooldownService cooldownService =
+                mock(ProviderCooldownService.class);
 
         TmdbSyncService syncService = new TmdbSyncService(
                 mediaRepository,
                 externalIdRepository,
                 importService,
-                trackingService
+                trackingService,
+                cooldownService
         );
 
         Media firstMovie = new Media("Interstellar", MediaType.MOVIE);
@@ -256,6 +278,9 @@ class TmdbSyncServiceTest {
                 .when(importService)
                 .refreshMovie(27205L);
 
+        when(cooldownService.isProviderAvailable("TMDB"))
+                .thenReturn(true);
+
         int refreshedCount = syncService.syncOutdatedMovies(3);
 
         assertThat(refreshedCount).isEqualTo(1);
@@ -267,6 +292,229 @@ class TmdbSyncServiceTest {
         verify(trackingService).recordSuccess(firstExternalId.getId());
         verify(trackingService, never()).recordFailure(secondExternalId.getId());
         verify(trackingService, never()).recordPermanentFailure(secondExternalId.getId());
+        verify(cooldownService).recordRateLimit("TMDB");
+    }
+
+    @Test
+    void skipsSynchronizationWhenProviderCooldownIsActive() {
+
+        // Arrange: create mocked dependencies.
+        MediaRepository mediaRepository = mock(MediaRepository.class);
+        MediaExternalIdRepository externalIdRepository =
+                mock(MediaExternalIdRepository.class);
+        TmdbImportService importService = mock(TmdbImportService.class);
+        SyncTrackingService trackingService = mock(SyncTrackingService.class);
+        ProviderCooldownService cooldownService =
+                mock(ProviderCooldownService.class);
+
+        TmdbSyncService syncService = new TmdbSyncService(
+                mediaRepository,
+                externalIdRepository,
+                importService,
+                trackingService,
+                cooldownService
+        );
+
+        // Simulate an active TMDB cooldown.
+        when(cooldownService.isProviderAvailable("TMDB"))
+                .thenReturn(false);
+
+        // Act: attempt to synchronize 10 movies.
+        int refreshedCount = syncService.syncOutdatedMovies(10);
+
+        // Assert: the batch was skipped.
+        assertThat(refreshedCount).isZero();
+
+        verify(cooldownService).isProviderAvailable("TMDB");
+
+        // The service must not query or refresh any movies.
+        verifyNoInteractions(
+                mediaRepository,
+                externalIdRepository,
+                importService,
+                trackingService
+        );
+    }
+
+    @Test
+    void stopsBatchEvenWhenSavingCooldownFails() {
+
+        MediaRepository mediaRepository = mock(MediaRepository.class);
+        MediaExternalIdRepository externalIdRepository =
+                mock(MediaExternalIdRepository.class);
+        TmdbImportService importService = mock(TmdbImportService.class);
+        SyncTrackingService trackingService = mock(SyncTrackingService.class);
+        ProviderCooldownService cooldownService =
+                mock(ProviderCooldownService.class);
+
+        TmdbSyncService syncService = new TmdbSyncService(
+                mediaRepository,
+                externalIdRepository,
+                importService,
+                trackingService,
+                cooldownService
+        );
+
+        Media firstMovie = new Media("Inception", MediaType.MOVIE);
+        Media secondMovie = new Media("The Dark Knight", MediaType.MOVIE);
+
+        ReflectionTestUtils.setField(firstMovie, "id", UUID.randomUUID());
+        ReflectionTestUtils.setField(secondMovie, "id", UUID.randomUUID());
+
+        MediaExternalId externalId = new MediaExternalId(
+                firstMovie, "TMDB", "MOVIE", "27205"
+        );
+
+        ReflectionTestUtils.setField(
+                externalId, "id", UUID.randomUUID()
+        );
+
+        when(cooldownService.isProviderAvailable("TMDB"))
+                .thenReturn(true);
+
+        when(mediaRepository.findMediaNeedingSync(
+                eq(MediaType.MOVIE),
+                any(),
+                any(),
+                any(Pageable.class)
+        )).thenReturn(
+                new PageImpl<>(List.of(firstMovie, secondMovie))
+        );
+
+        when(externalIdRepository.findByMediaIdAndProviderAndProviderMediaType(
+                eq(firstMovie.getId()), eq("TMDB"), eq("MOVIE")
+        )).thenReturn(Optional.of(externalId));
+
+        // TMDB rejects the first movie due to rate limiting.
+        doThrow(new TmdbRateLimitException("TMDB rate limit exceeded"))
+                .when(importService)
+                .refreshMovie(27205L);
+
+        // Simulate PostgreSQL failing to save the cooldown.
+        doThrow(new IllegalStateException("Database write failed"))
+                .when(cooldownService)
+                .recordRateLimit("TMDB");
+
+        int refreshedCount = syncService.syncOutdatedMovies(2);
+
+        assertThat(refreshedCount).isZero();
+
+        verify(importService).refreshMovie(27205L);
+
+        // The second movie must NOT be requested.
+        verify(importService, never()).refreshMovie(155L);
+
+        verify(cooldownService).recordRateLimit("TMDB");
+
+        verifyNoInteractions(trackingService);
+    }
+
+    @Test
+    void stopsBatchWhenTmdbAuthenticationFails() {
+
+        MediaRepository mediaRepository = mock(MediaRepository.class);
+        MediaExternalIdRepository externalIdRepository =
+                mock(MediaExternalIdRepository.class);
+        TmdbImportService importService = mock(TmdbImportService.class);
+        SyncTrackingService trackingService = mock(SyncTrackingService.class);
+        ProviderCooldownService cooldownService =
+                mock(ProviderCooldownService.class);
+
+        TmdbSyncService syncService = new TmdbSyncService(
+                mediaRepository,
+                externalIdRepository,
+                importService,
+                trackingService,
+                cooldownService
+        );
+
+        Media firstMovie = new Media("Inception", MediaType.MOVIE);
+        Media secondMovie = new Media("The Dark Knight", MediaType.MOVIE);
+
+        ReflectionTestUtils.setField(firstMovie, "id", UUID.randomUUID());
+        ReflectionTestUtils.setField(secondMovie, "id", UUID.randomUUID());
+
+        MediaExternalId externalId = new MediaExternalId(
+                firstMovie, "TMDB", "MOVIE", "27205"
+        );
+
+        ReflectionTestUtils.setField(
+                externalId, "id", UUID.randomUUID()
+        );
+
+        when(cooldownService.isProviderAvailable("TMDB"))
+                .thenReturn(true);
+
+        when(mediaRepository.findMediaNeedingSync(
+                eq(MediaType.MOVIE),
+                any(),
+                any(),
+                any(Pageable.class)
+        )).thenReturn(
+                new PageImpl<>(List.of(firstMovie, secondMovie))
+        );
+
+        when(externalIdRepository.findByMediaIdAndProviderAndProviderMediaType(
+                firstMovie.getId(), "TMDB", "MOVIE"
+        )).thenReturn(Optional.of(externalId));
+
+        // Simulate TMDB rejecting our API credentials.
+        doThrow(new TmdbAuthenticationException("Invalid TMDB token"))
+                .when(importService)
+                .refreshMovie(27205L);
+
+        int refreshedCount = syncService.syncOutdatedMovies(2);
+
+        // No movies were refreshed successfully.
+        assertThat(refreshedCount).isZero();
+
+        verify(importService).refreshMovie(27205L);
+
+        // The second movie must never be processed.
+        verify(externalIdRepository, never())
+                .findByMediaIdAndProviderAndProviderMediaType(
+                        secondMovie.getId(), "TMDB", "MOVIE"
+                );
+
+        // Authentication errors must not affect individual retry tracking.
+        verifyNoInteractions(trackingService);
+
+        // HTTP 401 is not a rate-limit error.
+        verify(cooldownService, never()).recordRateLimit("TMDB");
+    }
+
+    @Test
+    void rejectsInvalidBatchSizeBeforeCheckingProviderCooldown() {
+
+        MediaRepository mediaRepository = mock(MediaRepository.class);
+        MediaExternalIdRepository externalIdRepository =
+                mock(MediaExternalIdRepository.class);
+        TmdbImportService importService = mock(TmdbImportService.class);
+        SyncTrackingService trackingService = mock(SyncTrackingService.class);
+        ProviderCooldownService cooldownService =
+                mock(ProviderCooldownService.class);
+
+        TmdbSyncService syncService = new TmdbSyncService(
+                mediaRepository,
+                externalIdRepository,
+                importService,
+                trackingService,
+                cooldownService
+        );
+
+        // Invalid batch size must be rejected immediately.
+        assertThatThrownBy(() -> syncService.syncOutdatedMovies(0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Batch size must be between 1 and 100");
+
+        // No provider checks, database queries, or API calls should occur.
+        verifyNoInteractions(
+                cooldownService,
+                mediaRepository,
+                externalIdRepository,
+                importService,
+                trackingService
+        );
     }
 
 }

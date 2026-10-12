@@ -258,7 +258,7 @@ The backend currently includes:
 - PostgreSQL-backed searching
 - TMDB movie importing and refreshing
 - Synchronization retry tracking
-- HTTP 404 and 429 handling
+- HTTP 401, 404, and 429 handling
 - Provider-wide synchronization cooldowns
 - Automated backend tests
 

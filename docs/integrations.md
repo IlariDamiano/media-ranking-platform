@@ -120,6 +120,29 @@ TMDB API responses are classified according to their HTTP status.
 | 429 | Throw `TmdbRateLimitException` |
 | Other 4xx/5xx | Use Spring's default HTTP error handling |
 
+### HTTP 401 — Authentication Failure
+
+An HTTP 401 response indicates that TMDB has rejected
+the application's authentication credentials.
+
+The TMDB client throws `TmdbAuthenticationException`.
+
+During batch synchronization:
+
+- The current batch stops immediately.
+- Remaining movies are not refreshed.
+- No individual synchronization failure is recorded.
+- The affected movie is not permanently disabled.
+- No rate-limit cooldown is created.
+
+This prevents repeated requests with invalid credentials
+within the same batch.
+
+Current limitation: authentication failure is not yet
+persisted as provider-wide blocking state. A future batch
+could attempt to contact TMDB again with the same invalid
+credentials.
+
 ### HTTP 404 — Missing Media
 
 A confirmed missing movie produces `TmdbPermanentException`.
@@ -192,7 +215,9 @@ The normal test suite does not require contacting TMDB, but database integration
 
 Before enabling unattended synchronization or deploying publicly, the platform still needs:
 
-- Explicit handling of provider authentication failures, including HTTP 401.
+- Persistent provider-level authentication failure handling,
+  preventing subsequent batches from retrying until credentials
+  have been corrected.
 - Support for provider-supplied `Retry-After` headers.
 - Concurrency protection against overlapping synchronization jobs and concurrent cooldown updates.
 - Safer recovery when a provider cooldown cannot be persisted.
