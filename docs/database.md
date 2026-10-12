@@ -51,7 +51,7 @@ Key columns include:
 | Column | PostgreSQL type | Description |
 |---|---|---|
 | `id` | UUID | Unique media identifier |
-| `title` | VARCHAR(300) | Canonical display title |
+| `title` | VARCHAR(500) | Canonical display title |
 | `media_type` | VARCHAR(20) | Media category |
 | `description` | TEXT | Synopsis or description |
 | `release_date` | DATE | Original release date |
@@ -201,7 +201,8 @@ Introduced in Flyway V11 to manage synchronization restrictions affecting an ent
 | `provider` | VARCHAR(50) | Primary key |
 | `cooldown_until` | TIMESTAMPTZ | Provider-wide cooldown expiration |
 | `updated_at` | TIMESTAMPTZ | Most recent state update |
-
+| `sync_lease_owner` | UUID | Current synchronization lease owner |
+| `sync_lease_until` | TIMESTAMPTZ | Lease expiration timestamp |
 Unlike `media_external_ids`, which tracks individual media records, this table tracks provider-level restrictions.
 
 For example, an HTTP 429 response from TMDB triggers an attempt to save a provider-wide cooldown.
@@ -280,7 +281,8 @@ Database schema changes are managed through numbered SQL migrations located at:
 | V9 | `add_external_id_sync_tracking` | Add attempt timestamps, retry timestamps, and failure counts |
 | V10 | `add_external_id_sync_disabled` | Add permanent synchronization-disable state |
 | V11 | `create_provider_sync_state` | Add provider-wide synchronization cooldown tracking |
-
+| V12 | `add_provider_sync_lease` | Add synchronization lease ownership and expiration |
+| V13 | `expand_media_title_length` | Expand media titles to 500 characters |
 **Migration note:** V3 already enables `pg_trgm` and creates trigram indexes for its title tables. V4 separately ensures that the extension is enabled. Applied migrations must not be edited casually because Flyway validates their stored checksums.
 
 New schema changes should be introduced through additional migrations.

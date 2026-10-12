@@ -33,7 +33,7 @@ public class Media {
     private String title;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "media_type", nullable = false, length = 30)
+    @Column(name = "media_type", nullable = false, length = 20)
     private MediaType mediaType;
 
     @Setter
