@@ -71,6 +71,7 @@ public interface MediaRepository extends JpaRepository<Media, UUID> {
         WHERE e.media = m
         AND e.provider = 'TMDB'
         AND e.providerMediaType = 'MOVIE'
+        AND e.syncDisabled = false
         AND (
             e.nextSyncAttemptAt IS NULL
             OR e.nextSyncAttemptAt <= :now
@@ -83,6 +84,7 @@ public interface MediaRepository extends JpaRepository<Media, UUID> {
             @Param("now") Instant now,
             Pageable pageable
     );
+
 
 
 

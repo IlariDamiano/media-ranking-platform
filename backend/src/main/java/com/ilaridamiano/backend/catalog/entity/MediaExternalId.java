@@ -43,6 +43,10 @@ public class MediaExternalId {
     @Column(name = "sync_failure_count", nullable = false)
     private int syncFailureCount;
 
+    @Setter
+    @Column(name = "sync_disabled", nullable = false)
+    private boolean syncDisabled;
+
     protected MediaExternalId() {
     }
 

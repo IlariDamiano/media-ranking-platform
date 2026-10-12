@@ -184,4 +184,42 @@ class TmdbSyncServiceIntegrationTest {
                 .doesNotContain(blockedMovie.getId());
     }
 
+    @Test
+    @Transactional
+    void excludesPermanentlyDisabledMovies() {
+
+        Instant now = Instant.now();
+        Instant cutoff = now.minus(7, ChronoUnit.DAYS);
+
+        Media disabledMovie = new Media(
+                "Disabled Sync Test Movie", MediaType.MOVIE
+        );
+
+        disabledMovie.setLastSyncedAt(
+                now.minus(10, ChronoUnit.DAYS)
+        );
+
+        disabledMovie = mediaRepository.saveAndFlush(disabledMovie);
+
+        MediaExternalId externalId = new MediaExternalId(
+                disabledMovie, "TMDB", "MOVIE", "990103"
+        );
+
+        externalId.setSyncDisabled(true);
+        externalId.setNextSyncAttemptAt(null);
+
+        externalIdRepository.saveAndFlush(externalId);
+
+        Page<Media> results = mediaRepository.findMediaNeedingSync(
+                MediaType.MOVIE,
+                cutoff,
+                now,
+                PageRequest.of(0, 100)
+        );
+
+        assertThat(results.getContent())
+                .extracting(Media::getId)
+                .doesNotContain(disabledMovie.getId());
+    }
+
 }
