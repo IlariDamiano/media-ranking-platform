@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Akashic Archive">
+  <defs>
+    <linearGradient id="chrome" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff7ff"/>
+      <stop offset=".48" stop-color="#c5aecb"/>
+      <stop offset="1" stop-color="#f8f0f8"/>
+    </linearGradient>
+    <radialGradient id="iris" cx=".5" cy=".45" r=".6">
+      <stop offset="0" stop-color="#ff859d"/>
+      <stop offset=".32" stop-color="#dd2959"/>
+      <stop offset=".75" stop-color="#6e102d"/>
+      <stop offset="1" stop-color="#120917"/>
+    </radialGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#100813" stroke="#66213c" stroke-width="1.5"/>
+  <path d="M11 25C17 13 47 13 53 25" fill="none" stroke="#ba315a" stroke-width="2" stroke-linecap="round"/>
+  <path d="M9 32C17 21 25 17 32 17C39 17 47 21 55 32C47 43 39 47 32 47C25 47 17 43 9 32Z" fill="#180e1f" stroke="url(#chrome)" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="32" cy="32" r="11.7" fill="url(#iris)" stroke="#edb1c6" stroke-width="1.5"/>
+  <circle cx="32" cy="32" r="7" fill="#2c0a22"/>
+  <path d="M32 18L34.9 29.1L46 32L34.9 34.9L32 46L29.1 34.9L18 32L29.1 29.1Z" fill="#fff0f6"/>
+  <circle cx="32" cy="32" r="3" fill="#ff315c"/>
+  <path d="M13 49C20 47 26 49 32 54C38 49 44 47 51 49" fill="none" stroke="#e85a81" stroke-width="2" stroke-linecap="round"/>
+</svg>
