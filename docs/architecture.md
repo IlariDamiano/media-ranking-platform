@@ -136,7 +136,7 @@ Before processing a batch, the service checks the provider-wide cooldown state.
 If TMDB is unavailable because of an active cooldown, the batch is skipped.
 
 Otherwise, eligible movies are processed individually.
-
+Provider synchronization uses PostgreSQL-backed leases to prevent overlapping batches. Each lease has a 30-minute expiration and is released when synchronization finishes. Automatic scheduling remains disabled because lease renewal and safeguards against jobs exceeding their lease duration are not yet implemented.
 ### Error Handling
 
 The synchronization system distinguishes several outcomes:

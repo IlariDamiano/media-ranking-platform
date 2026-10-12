@@ -204,7 +204,7 @@ Migration filenames follow the convention:
 
 `V<number>__description.sql`
 
-The project currently includes migrations V1 through V11.
+The project currently includes migrations V1 through V13.
 
 Flyway records applied migrations in its database history table.
 

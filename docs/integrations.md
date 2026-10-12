@@ -13,7 +13,7 @@ The goal is to maintain a searchable media database while storing application-sp
 | TMDB | Movies and TV metadata | Movie integration implemented |
 | AniList | Anime and manga metadata | Planned |
 
-TV synchronization and additional provider integrations are not yet implemented.
+Provider synchronization uses PostgreSQL-backed leases to prevent overlapping batches. Each lease has a 30-minute expiration and is released when synchronization finishes. Automatic scheduling remains disabled because lease renewal and safeguards against jobs exceeding their lease duration are not yet implemented.
 
 ## 1. TMDB Integration
 
