@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "provider_sync_state")
@@ -26,6 +27,20 @@ public class ProviderSyncState {
     @Setter
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Column(
+            name = "sync_lease_owner",
+            insertable = false,
+            updatable = false
+    )
+    private UUID syncLeaseOwner;
+
+    @Column(
+            name = "sync_lease_until",
+            insertable = false,
+            updatable = false
+    )
+    private Instant syncLeaseUntil;
 
     protected ProviderSyncState() {
     }

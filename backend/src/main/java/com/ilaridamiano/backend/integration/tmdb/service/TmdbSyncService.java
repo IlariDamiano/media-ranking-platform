@@ -18,6 +18,8 @@ import com.ilaridamiano.backend.integration.sync.service.ProviderCooldownService
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import com.ilaridamiano.backend.integration.tmdb.exception.TmdbAuthenticationException;
+import com.ilaridamiano.backend.integration.sync.service.ProviderSyncLeaseService;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +31,7 @@ public class TmdbSyncService {
     private final TmdbImportService tmdbImportService;
     private final SyncTrackingService syncTrackingService;
     private final ProviderCooldownService providerCooldownService;
+    private final ProviderSyncLeaseService providerSyncLeaseService;
 
     public Page<Media> findOutdatedMovies(int batchSize) {
 
@@ -59,11 +62,38 @@ public class TmdbSyncService {
         validateBatchSize(batchSize);
 
         if (!providerCooldownService.isProviderAvailable("TMDB")) {
-            log.info(
-                    "Skipping TMDB synchronization: provider cooldown is active"
-            );
+            log.info("Skipping TMDB sync: provider cooldown is active");
             return 0;
         }
+
+        UUID leaseOwner = UUID.randomUUID();
+
+        if (!providerSyncLeaseService.tryAcquire("TMDB", leaseOwner)) {
+            log.info("Skipping TMDB sync: lease is unavailable");
+            return 0;
+        }
+
+        try {
+            return processOutdatedMovies(batchSize);
+
+        } finally {
+            try {
+                boolean released = providerSyncLeaseService.release(
+                        "TMDB",
+                        leaseOwner
+                );
+
+                if (!released) {
+                    log.warn("TMDB sync lease could not be released by its owner");
+                }
+
+            } catch (Exception exception) {
+                log.error("Failed to release TMDB synchronization lease", exception);
+            }
+        }
+    }
+
+    private int processOutdatedMovies(int batchSize) {
 
         Page<Media> batch = findOutdatedMovies(batchSize);
 

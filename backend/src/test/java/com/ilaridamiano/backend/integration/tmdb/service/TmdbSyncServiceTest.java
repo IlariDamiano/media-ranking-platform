@@ -1,4 +1,3 @@
-
 package com.ilaridamiano.backend.integration.tmdb.service;
 
 import com.ilaridamiano.backend.catalog.entity.Media;
@@ -6,22 +5,26 @@ import com.ilaridamiano.backend.catalog.entity.MediaExternalId;
 import com.ilaridamiano.backend.catalog.enums.MediaType;
 import com.ilaridamiano.backend.catalog.repository.MediaExternalIdRepository;
 import com.ilaridamiano.backend.catalog.repository.MediaRepository;
+import com.ilaridamiano.backend.integration.sync.service.ProviderCooldownService;
+import com.ilaridamiano.backend.integration.sync.service.ProviderSyncLeaseService;
+import com.ilaridamiano.backend.integration.tmdb.exception.TmdbAuthenticationException;
 import com.ilaridamiano.backend.integration.tmdb.exception.TmdbPermanentException;
+import com.ilaridamiano.backend.integration.tmdb.exception.TmdbRateLimitException;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
-import com.ilaridamiano.backend.integration.tmdb.exception.TmdbRateLimitException;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import com.ilaridamiano.backend.integration.sync.service.ProviderCooldownService;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-import com.ilaridamiano.backend.integration.tmdb.exception.TmdbAuthenticationException;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TmdbSyncServiceTest {
 
@@ -35,13 +38,16 @@ class TmdbSyncServiceTest {
         SyncTrackingService trackingService = mock(SyncTrackingService.class);
         ProviderCooldownService cooldownService =
                 mock(ProviderCooldownService.class);
+        ProviderSyncLeaseService leaseService =
+                mock(ProviderSyncLeaseService.class);
 
         TmdbSyncService syncService = new TmdbSyncService(
                 mediaRepository,
                 externalIdRepository,
                 importService,
                 trackingService,
-                cooldownService
+                cooldownService,
+                leaseService
         );
 
         Media movie = new Media("Interstellar", MediaType.MOVIE);
@@ -72,6 +78,8 @@ class TmdbSyncServiceTest {
         when(cooldownService.isProviderAvailable("TMDB"))
                 .thenReturn(true);
 
+        allowLease(leaseService);
+
         int refreshedCount = syncService.syncOutdatedMovies(10);
 
         assertThat(refreshedCount).isEqualTo(1);
@@ -80,6 +88,10 @@ class TmdbSyncServiceTest {
                 .refreshMovie(157336L);
         verify(trackingService).recordSuccess(externalId.getId());
         verify(trackingService, never()).recordFailure(any());
+
+        ArgumentCaptor<UUID> ownerCaptor = ArgumentCaptor.forClass(UUID.class);
+        verify(leaseService).tryAcquire(eq("TMDB"), ownerCaptor.capture());
+        verify(leaseService).release("TMDB", ownerCaptor.getValue());
     }
 
     @Test
@@ -92,12 +104,15 @@ class TmdbSyncServiceTest {
         SyncTrackingService trackingService = mock(SyncTrackingService.class);
         ProviderCooldownService cooldownService =
                 mock(ProviderCooldownService.class);
+        ProviderSyncLeaseService leaseService =
+                mock(ProviderSyncLeaseService.class);
         TmdbSyncService syncService = new TmdbSyncService(
                 mediaRepository,
                 externalIdRepository,
                 importService,
                 trackingService,
-                cooldownService
+                cooldownService,
+                leaseService
         );
 
         Media firstMovie = new Media("Interstellar", MediaType.MOVIE);
@@ -125,8 +140,7 @@ class TmdbSyncServiceTest {
                 any(Pageable.class)
         )).thenReturn(new PageImpl<>(List.of(firstMovie, secondMovie)));
 
-        // The entities are not persisted, so their IDs are null.
-        // Return a different external ID on each lookup.
+        // Use the assigned IDs to return the correct external ID for each movie.
         when(externalIdRepository.findByMediaIdAndProviderAndProviderMediaType(
                 eq(firstMovie.getId()), eq("TMDB"), eq("MOVIE")
         )).thenReturn(Optional.of(firstExternalId));
@@ -142,6 +156,8 @@ class TmdbSyncServiceTest {
 
         when(cooldownService.isProviderAvailable("TMDB"))
                 .thenReturn(true);
+
+        allowLease(leaseService);
 
         int refreshedCount = syncService.syncOutdatedMovies(2);
 
@@ -163,13 +179,16 @@ class TmdbSyncServiceTest {
         SyncTrackingService trackingService = mock(SyncTrackingService.class);
         ProviderCooldownService cooldownService =
                 mock(ProviderCooldownService.class);
+        ProviderSyncLeaseService leaseService =
+                mock(ProviderSyncLeaseService.class);
 
         TmdbSyncService syncService = new TmdbSyncService(
                 mediaRepository,
                 externalIdRepository,
                 importService,
                 trackingService,
-                cooldownService
+                cooldownService,
+                leaseService
         );
 
         Media movie = new Media("Missing Movie", MediaType.MOVIE);
@@ -206,6 +225,8 @@ class TmdbSyncServiceTest {
         when(cooldownService.isProviderAvailable("TMDB"))
                 .thenReturn(true);
 
+        allowLease(leaseService);
+
         int refreshedCount = syncService.syncOutdatedMovies(10);
 
         assertThat(refreshedCount).isZero();
@@ -226,13 +247,16 @@ class TmdbSyncServiceTest {
         SyncTrackingService trackingService = mock(SyncTrackingService.class);
         ProviderCooldownService cooldownService =
                 mock(ProviderCooldownService.class);
+        ProviderSyncLeaseService leaseService =
+                mock(ProviderSyncLeaseService.class);
 
         TmdbSyncService syncService = new TmdbSyncService(
                 mediaRepository,
                 externalIdRepository,
                 importService,
                 trackingService,
-                cooldownService
+                cooldownService,
+                leaseService
         );
 
         Media firstMovie = new Media("Interstellar", MediaType.MOVIE);
@@ -281,6 +305,8 @@ class TmdbSyncServiceTest {
         when(cooldownService.isProviderAvailable("TMDB"))
                 .thenReturn(true);
 
+        allowLease(leaseService);
+
         int refreshedCount = syncService.syncOutdatedMovies(3);
 
         assertThat(refreshedCount).isEqualTo(1);
@@ -306,13 +332,16 @@ class TmdbSyncServiceTest {
         SyncTrackingService trackingService = mock(SyncTrackingService.class);
         ProviderCooldownService cooldownService =
                 mock(ProviderCooldownService.class);
+        ProviderSyncLeaseService leaseService =
+                mock(ProviderSyncLeaseService.class);
 
         TmdbSyncService syncService = new TmdbSyncService(
                 mediaRepository,
                 externalIdRepository,
                 importService,
                 trackingService,
-                cooldownService
+                cooldownService,
+                leaseService
         );
 
         // Simulate an active TMDB cooldown.
@@ -326,6 +355,7 @@ class TmdbSyncServiceTest {
         assertThat(refreshedCount).isZero();
 
         verify(cooldownService).isProviderAvailable("TMDB");
+        verifyNoInteractions(leaseService);
 
         // The service must not query or refresh any movies.
         verifyNoInteractions(
@@ -346,13 +376,16 @@ class TmdbSyncServiceTest {
         SyncTrackingService trackingService = mock(SyncTrackingService.class);
         ProviderCooldownService cooldownService =
                 mock(ProviderCooldownService.class);
+        ProviderSyncLeaseService leaseService =
+                mock(ProviderSyncLeaseService.class);
 
         TmdbSyncService syncService = new TmdbSyncService(
                 mediaRepository,
                 externalIdRepository,
                 importService,
                 trackingService,
-                cooldownService
+                cooldownService,
+                leaseService
         );
 
         Media firstMovie = new Media("Inception", MediaType.MOVIE);
@@ -371,6 +404,8 @@ class TmdbSyncServiceTest {
 
         when(cooldownService.isProviderAvailable("TMDB"))
                 .thenReturn(true);
+
+        allowLease(leaseService);
 
         when(mediaRepository.findMediaNeedingSync(
                 eq(MediaType.MOVIE),
@@ -419,13 +454,16 @@ class TmdbSyncServiceTest {
         SyncTrackingService trackingService = mock(SyncTrackingService.class);
         ProviderCooldownService cooldownService =
                 mock(ProviderCooldownService.class);
+        ProviderSyncLeaseService leaseService =
+                mock(ProviderSyncLeaseService.class);
 
         TmdbSyncService syncService = new TmdbSyncService(
                 mediaRepository,
                 externalIdRepository,
                 importService,
                 trackingService,
-                cooldownService
+                cooldownService,
+                leaseService
         );
 
         Media firstMovie = new Media("Inception", MediaType.MOVIE);
@@ -444,6 +482,8 @@ class TmdbSyncServiceTest {
 
         when(cooldownService.isProviderAvailable("TMDB"))
                 .thenReturn(true);
+
+        allowLease(leaseService);
 
         when(mediaRepository.findMediaNeedingSync(
                 eq(MediaType.MOVIE),
@@ -493,13 +533,16 @@ class TmdbSyncServiceTest {
         SyncTrackingService trackingService = mock(SyncTrackingService.class);
         ProviderCooldownService cooldownService =
                 mock(ProviderCooldownService.class);
+        ProviderSyncLeaseService leaseService =
+                mock(ProviderSyncLeaseService.class);
 
         TmdbSyncService syncService = new TmdbSyncService(
                 mediaRepository,
                 externalIdRepository,
                 importService,
                 trackingService,
-                cooldownService
+                cooldownService,
+                leaseService
         );
 
         // Invalid batch size must be rejected immediately.
@@ -510,6 +553,7 @@ class TmdbSyncServiceTest {
         // No provider checks, database queries, or API calls should occur.
         verifyNoInteractions(
                 cooldownService,
+                leaseService,
                 mediaRepository,
                 externalIdRepository,
                 importService,
@@ -517,4 +561,52 @@ class TmdbSyncServiceTest {
         );
     }
 
+
+    @Test
+    void skipsSynchronizationWhenAnotherJobHoldsLease() {
+
+        MediaRepository mediaRepository = mock(MediaRepository.class);
+        MediaExternalIdRepository externalIdRepository =
+                mock(MediaExternalIdRepository.class);
+        TmdbImportService importService = mock(TmdbImportService.class);
+        SyncTrackingService trackingService = mock(SyncTrackingService.class);
+        ProviderCooldownService cooldownService =
+                mock(ProviderCooldownService.class);
+        ProviderSyncLeaseService leaseService =
+                mock(ProviderSyncLeaseService.class);
+
+        TmdbSyncService syncService = new TmdbSyncService(
+                mediaRepository,
+                externalIdRepository,
+                importService,
+                trackingService,
+                cooldownService,
+                leaseService
+        );
+
+        when(cooldownService.isProviderAvailable("TMDB"))
+                .thenReturn(true);
+        when(leaseService.tryAcquire(eq("TMDB"), any(UUID.class)))
+                .thenReturn(false);
+
+        assertThat(syncService.syncOutdatedMovies(10)).isZero();
+
+        verify(leaseService).tryAcquire(eq("TMDB"), any(UUID.class));
+        verify(leaseService, never()).release(eq("TMDB"), any(UUID.class));
+        verifyNoInteractions(
+                mediaRepository,
+                externalIdRepository,
+                importService,
+                trackingService
+        );
+    }
+
+    private static void allowLease(ProviderSyncLeaseService leaseService) {
+        // A real lease is acquired and released in separate transactions.
+        // Mockito only needs to simulate those outcomes in these unit tests.
+        when(leaseService.tryAcquire(eq("TMDB"), any(UUID.class)))
+                .thenReturn(true);
+        when(leaseService.release(eq("TMDB"), any(UUID.class)))
+                .thenReturn(true);
+    }
 }
