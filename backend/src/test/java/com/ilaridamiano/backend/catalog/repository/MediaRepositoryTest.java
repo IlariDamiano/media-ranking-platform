@@ -302,4 +302,32 @@ class MediaRepositoryTest {
                 .isEqualTo(movieId);
     }
 
+    @Test
+    @Transactional
+    void findsIncompleteAndMistypedTitles() {
+
+        Media interstellar = mediaRepository.saveAndFlush(
+                new Media("Interstellar", MediaType.MOVIE)
+        );
+
+        List<String> queries = List.of(
+                "interstellar",
+                "intrestellar",
+                "itestellar",
+                "intres",
+                "itestell"
+        );
+
+        for (String query : queries) {
+
+            List<Media> results =
+                    mediaRepository.searchByRelevance(query);
+
+            assertThat(results)
+                    .as("Search '%s' should find Interstellar", query)
+                    .extracting(Media::getId)
+                    .contains(interstellar.getId());
+        }
+    }
+
 }

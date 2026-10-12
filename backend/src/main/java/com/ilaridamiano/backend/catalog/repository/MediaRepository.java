@@ -22,6 +22,13 @@ public interface MediaRepository extends JpaRepository<Media, UUID> {
             WHERE
             lower(m.title) LIKE concat('%', lower(:query), '%')
             OR lower(m.title) % lower(:query)
+            OR (
+                length(trim(:query)) >= 5
+                AND word_similarity(
+                    lower(trim(:query)),
+                    lower(m.title)
+                ) >= 0.32
+            )           
             OR EXISTS (
                 SELECT 1
                 FROM media_aliases a
@@ -29,6 +36,13 @@ public interface MediaRepository extends JpaRepository<Media, UUID> {
                   AND (
                       lower(a.title) LIKE concat('%', lower(:query), '%')
                       OR lower(a.title) % lower(:query)
+                      OR (
+                          length(trim(:query)) >= 5
+                          AND word_similarity(
+                              lower(trim(:query)),
+                              lower(a.title)
+                          ) >= 0.32
+                      )
                   )
             )
             ORDER BY
@@ -46,13 +60,31 @@ public interface MediaRepository extends JpaRepository<Media, UUID> {
             END,
             GREATEST(
                 similarity(lower(m.title), lower(:query)),
+            
+                word_similarity(
+                    lower(trim(:query)),
+                    lower(m.title)
+                ),
+            
                 COALESCE((
-                    SELECT MAX(similarity(lower(a.title), lower(:query)))
+                    SELECT MAX(
+                        GREATEST(
+                            similarity(
+                                lower(a.title),
+                                lower(:query)
+                            ),
+                            word_similarity(
+                                lower(trim(:query)),
+                                lower(a.title)
+                            )
+                        )
+                    )
                     FROM media_aliases a
                     WHERE a.media_id = m.id
                 ), 0)
             ) DESC,
-            m.title ASC
+            m.title ASC,
+            m.id ASC
             LIMIT 20
         """, nativeQuery = true)
     List<Media> searchByRelevance(String query);
