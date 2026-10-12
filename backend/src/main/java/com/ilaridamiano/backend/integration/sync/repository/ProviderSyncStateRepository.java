@@ -63,4 +63,53 @@ public interface ProviderSyncStateRepository
             @Param("now") Instant now
     );
 
+    @Modifying
+    @Query(value = """
+        INSERT INTO provider_sync_state (
+            provider,
+            cooldown_until,
+            updated_at
+        )
+        VALUES (
+            :provider,
+            :cooldownUntil,
+            :now
+        )
+        ON CONFLICT (provider)
+        DO UPDATE SET
+            cooldown_until = GREATEST(
+                provider_sync_state.cooldown_until,
+                EXCLUDED.cooldown_until
+            ),
+            updated_at = EXCLUDED.updated_at
+        """, nativeQuery = true)
+    int extendCooldown(
+            @Param("provider") String provider,
+            @Param("cooldownUntil") Instant cooldownUntil,
+            @Param("now") Instant now
+    );
+
+    @Modifying
+    @Query(value = """
+        UPDATE provider_sync_state
+        SET sync_lease_until = GREATEST(
+                sync_lease_until,
+                :leaseUntil
+            ),
+            updated_at = :now
+        WHERE provider = :provider
+          AND sync_lease_owner = :owner
+          AND sync_lease_until > :now
+          AND (
+              cooldown_until IS NULL
+              OR cooldown_until <= :now
+          )
+        """, nativeQuery = true)
+    int renewSyncLease(
+            @Param("provider") String provider,
+            @Param("owner") UUID owner,
+            @Param("leaseUntil") Instant leaseUntil,
+            @Param("now") Instant now
+    );
+
 }

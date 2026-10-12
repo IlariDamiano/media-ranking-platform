@@ -154,4 +154,101 @@ class ProviderSyncLeaseRepositoryIntegrationTest {
                 .isEqualTo(secondLeaseUntil);
     }
 
+    @Test
+    @Transactional
+    void onlyCurrentOwnerCanRenewActiveLease() {
+
+        String provider = "TEST_SYNC_LEASE_RENEWAL";
+        UUID owner = UUID.randomUUID();
+        UUID otherOwner = UUID.randomUUID();
+
+        Instant now = Instant.parse("2026-10-12T09:00:00Z");
+
+        assertThat(repository.tryAcquireSyncLease(
+                provider,
+                owner,
+                now.plus(Duration.ofMinutes(10)),
+                now
+        )).isEqualTo(1);
+
+        // Another owner cannot renew this lease.
+        assertThat(repository.renewSyncLease(
+                provider,
+                otherOwner,
+                now.plus(Duration.ofMinutes(30)),
+                now.plus(Duration.ofMinutes(1))
+        )).isZero();
+
+        // The current owner can renew it.
+        assertThat(repository.renewSyncLease(
+                provider,
+                owner,
+                now.plus(Duration.ofMinutes(30)),
+                now.plus(Duration.ofMinutes(1))
+        )).isEqualTo(1);
+
+        // Once expired, even the previous owner cannot renew.
+        assertThat(repository.renewSyncLease(
+                provider,
+                owner,
+                now.plus(Duration.ofMinutes(60)),
+                now.plus(Duration.ofMinutes(31))
+        )).isZero();
+
+        ProviderSyncState state =
+                repository.findById(provider).orElseThrow();
+
+        assertThat(state.getSyncLeaseOwner()).isEqualTo(owner);
+        assertThat(state.getSyncLeaseUntil())
+                .isEqualTo(now.plus(Duration.ofMinutes(30)));
+    }
+
+    @Test
+    @Transactional
+    void previousOwnerCannotReleaseReplacedLease() {
+
+        String provider = "TEST_LEASE_SAFE_RELEASE";
+
+        UUID firstOwner = UUID.randomUUID();
+        UUID secondOwner = UUID.randomUUID();
+
+        Instant now = Instant.parse("2026-10-12T09:00:00Z");
+        Instant later = now.plus(Duration.ofMinutes(11));
+
+        assertThat(repository.tryAcquireSyncLease(
+                provider,
+                firstOwner,
+                now.plus(Duration.ofMinutes(10)),
+                now
+        )).isEqualTo(1);
+
+        // First lease expires; second owner takes over.
+        assertThat(repository.tryAcquireSyncLease(
+                provider,
+                secondOwner,
+                later.plus(Duration.ofMinutes(30)),
+                later
+        )).isEqualTo(1);
+
+        // Previous owner must not release the new lease.
+        assertThat(repository.releaseSyncLease(
+                provider,
+                firstOwner,
+                later
+        )).isZero();
+
+        // Current owner can release it.
+        assertThat(repository.releaseSyncLease(
+                provider,
+                secondOwner,
+                later
+        )).isEqualTo(1);
+
+        ProviderSyncState state =
+                repository.findById(provider).orElseThrow();
+
+        assertThat(state.getSyncLeaseOwner()).isNull();
+        assertThat(state.getSyncLeaseUntil()).isNull();
+    }
+
 }

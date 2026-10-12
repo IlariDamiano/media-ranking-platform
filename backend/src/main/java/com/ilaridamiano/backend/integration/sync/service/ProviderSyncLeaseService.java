@@ -62,4 +62,20 @@ public class ProviderSyncLeaseService {
 
         Objects.requireNonNull(owner, "Lease owner is required");
     }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public boolean renew(String provider, UUID owner) {
+
+        validateArguments(provider, owner);
+
+        Instant now = clock.instant();
+
+        return repository.renewSyncLease(
+                provider,
+                owner,
+                now.plus(LEASE_DURATION),
+                now
+        ) == 1;
+    }
+
 }

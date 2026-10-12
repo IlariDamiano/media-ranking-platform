@@ -74,7 +74,7 @@ public class TmdbSyncService {
         }
 
         try {
-            return processOutdatedMovies(batchSize);
+            return processOutdatedMovies(batchSize, leaseOwner);
 
         } finally {
             try {
@@ -93,7 +93,7 @@ public class TmdbSyncService {
         }
     }
 
-    private int processOutdatedMovies(int batchSize) {
+    private int processOutdatedMovies(int batchSize, UUID leaseOwner) {
 
         Page<Media> batch = findOutdatedMovies(batchSize);
 
@@ -102,6 +102,29 @@ public class TmdbSyncService {
         for (Media movie : batch.getContent()) {
 
             MediaExternalId externalId;
+
+            boolean renewed;
+
+            try {
+                renewed = providerSyncLeaseService.renew(
+                        "TMDB",
+                        leaseOwner
+                );
+
+            } catch (Exception exception) {
+                log.error(
+                        "TMDB synchronization lease renewal failed. Stopping batch.",
+                        exception
+                );
+                break;
+            }
+
+            if (!renewed) {
+                log.warn(
+                        "TMDB synchronization lease is no longer renewable. Stopping batch."
+                );
+                break;
+            }
 
             try {
                 externalId = externalIdRepository
