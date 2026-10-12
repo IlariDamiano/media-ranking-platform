@@ -68,6 +68,10 @@ public class SecurityConfig {
                                 "/api/media/import/tmdb/movies/*")
                         .hasRole("ADMIN")
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/lists/*"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .securityContext(context -> context
