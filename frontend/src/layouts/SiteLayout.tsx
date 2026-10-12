@@ -8,9 +8,17 @@ export default function SiteLayout() {
       </a>
 
       <header className="site-nav">
-        <Link to="/" className="brand" aria-label="Media Ranking home">
-          <span className="brand-mark">M/</span>
-          <span className="brand-name">MEDIA RANKING</span>
+        <Link to="/" className="brand" aria-label="Akashic Archive home">
+          <img
+            className="brand-logo-horizontal"
+            src="/branding/akashic-logo-horizontal.webp"
+            alt=""
+          />
+          <img
+            className="brand-logo-emblem"
+            src="/branding/akashic-emblem.webp"
+            alt=""
+          />
         </Link>
 
         <nav className="nav-links" aria-label="Main navigation">
@@ -31,7 +39,7 @@ export default function SiteLayout() {
       </main>
 
       <footer className="site-footer">
-        <span>MEDIA RANKING / NEO-CHROME</span>
+        <span>AKASHIC ARCHIVE / EVERY STORY. ONE UNIVERSE.</span>
         <span>DISCOVER · TRACK · CURATE</span>
       </footer>
     </div>

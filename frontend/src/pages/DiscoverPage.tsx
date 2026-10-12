@@ -142,7 +142,7 @@ export default function DiscoverPage() {
     <>
       <section className="discovery-hero">
         <div className="hero-copy">
-          <p className="eyebrow">THE MEDIA ARCHIVE / VOL. 001</p>
+          <p className="eyebrow">AKASHIC ARCHIVE / VOL. 001</p>
 
           <h1>
             DISCOVER
@@ -151,8 +151,8 @@ export default function DiscoverPage() {
           </h1>
 
           <p className="hero-description">
-            Movies, series, anime, manga and beyond. Explore stories worth
-            experiencing, and build a universe of your own.
+            Every story. One universe. Discover films, TV shows, anime, manga
+            and more in one evolving archive.
           </p>
 
           <a className="hero-link" href="#catalog">
@@ -162,10 +162,13 @@ export default function DiscoverPage() {
         </div>
 
         <div className="hero-art" aria-hidden="true">
-          <div className="hero-orbit orbit-one" />
-          <div className="hero-orbit orbit-two" />
-          <div className="hero-monogram">M/</div>
-          <span className="hero-art-label">SIGNAL / 001</span>
+          <img
+            className="hero-emblem"
+            src="/branding/akashic-emblem.webp"
+            alt=""
+            decoding="async"
+          />
+          <span className="hero-art-label">THE ARCHIVE / 001</span>
         </div>
       </section>
 
@@ -273,7 +276,7 @@ export default function DiscoverPage() {
                   aria-hidden="true"
                 >
                   <span className="poster-code">
-                    M/ {item.id.slice(0, 6).toUpperCase()}
+                    AK / {item.id.slice(0, 6).toUpperCase()}
                   </span>
 
                   <span className="poster-text">{item.title}</span>
