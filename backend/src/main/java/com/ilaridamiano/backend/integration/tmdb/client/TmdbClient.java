@@ -10,6 +10,7 @@ import com.ilaridamiano.backend.integration.tmdb.exception.TmdbPermanentExceptio
 import org.springframework.http.HttpStatusCode;
 import org.springframework.web.client.RestClient;
 import com.ilaridamiano.backend.integration.tmdb.exception.TmdbAuthenticationException;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 
 @Component
 public class TmdbClient {
@@ -21,16 +22,32 @@ public class TmdbClient {
             @Value("${tmdb.base-url}") String baseUrl,
             @Value("${tmdb.access-token}") String accessToken
     ) {
-        this(RestClient.builder()
-                .baseUrl(baseUrl)
-                .defaultHeader("Authorization", "Bearer " + accessToken)
-                .build());
+        this(createRestClient(baseUrl, accessToken));
     }
 
     public TmdbClient(RestClient restClient) {
         this.restClient = restClient;
     }
 
+    private static RestClient createRestClient(
+            String baseUrl,
+            String accessToken
+    ) {
+        SimpleClientHttpRequestFactory factory =
+                new SimpleClientHttpRequestFactory();
+
+        factory.setConnectTimeout(5_000);
+        factory.setReadTimeout(15_000);
+
+        return RestClient.builder()
+                .baseUrl(baseUrl)
+                .defaultHeader(
+                        "Authorization",
+                        "Bearer " + accessToken
+                )
+                .requestFactory(factory)
+                .build();
+    }
 
     public TmdbMovieResponse getMovie(Long movieId) {
 

@@ -608,5 +608,62 @@ class TmdbSyncServiceTest {
                 .thenReturn(true);
         when(leaseService.release(eq("TMDB"), any(UUID.class)))
                 .thenReturn(true);
+        when(leaseService.renew(eq("TMDB"), any(UUID.class)))
+                .thenReturn(true);
     }
+
+    @Test
+    void stopsBatchWhenLeaseRenewalFails() {
+
+        MediaRepository mediaRepository =
+                mock(MediaRepository.class);
+        MediaExternalIdRepository externalIdRepository =
+                mock(MediaExternalIdRepository.class);
+        TmdbImportService importService =
+                mock(TmdbImportService.class);
+        SyncTrackingService trackingService =
+                mock(SyncTrackingService.class);
+        ProviderCooldownService cooldownService =
+                mock(ProviderCooldownService.class);
+        ProviderSyncLeaseService leaseService =
+                mock(ProviderSyncLeaseService.class);
+
+        TmdbSyncService syncService = new TmdbSyncService(
+                mediaRepository,
+                externalIdRepository,
+                importService,
+                trackingService,
+                cooldownService,
+                leaseService
+        );
+
+        when(cooldownService.isProviderAvailable("TMDB"))
+                .thenReturn(true);
+
+        allowLease(leaseService);
+
+        when(leaseService.renew(eq("TMDB"), any(UUID.class)))
+                .thenReturn(false);
+
+        Media movie = new Media("Test Movie", MediaType.MOVIE);
+
+        when(mediaRepository.findMediaNeedingSync(
+                eq(MediaType.MOVIE),
+                any(),
+                any(),
+                any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of(movie)));
+
+        assertThat(syncService.syncOutdatedMovies(10)).isZero();
+
+        verify(leaseService).renew(eq("TMDB"), any(UUID.class));
+        verify(leaseService).release(eq("TMDB"), any(UUID.class));
+
+        verifyNoInteractions(
+                externalIdRepository,
+                importService,
+                trackingService
+        );
+    }
+
 }

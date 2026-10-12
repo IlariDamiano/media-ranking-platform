@@ -33,21 +33,15 @@ public class ProviderCooldownService {
 
         Instant now = clock.instant();
 
-        ProviderSyncState state = providerSyncStateRepository
-                .findById(provider)
-                .orElseGet(() -> new ProviderSyncState(provider));
+        Instant cooldownUntil = now.plus(
+                DEFAULT_RATE_LIMIT_COOLDOWN
+        );
 
-        Instant proposedCooldown = now.plus(DEFAULT_RATE_LIMIT_COOLDOWN);
-
-        // Never shorten an existing cooldown.
-        if (state.getCooldownUntil() == null
-                || state.getCooldownUntil().isBefore(proposedCooldown)) {
-            state.setCooldownUntil(proposedCooldown);
-        }
-
-        state.setUpdatedAt(now);
-
-        providerSyncStateRepository.save(state);
+        providerSyncStateRepository.extendCooldown(
+                provider,
+                cooldownUntil,
+                now
+        );
     }
 
     @Transactional(readOnly = true)
