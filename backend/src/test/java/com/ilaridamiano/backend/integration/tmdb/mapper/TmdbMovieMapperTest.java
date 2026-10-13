@@ -52,6 +52,8 @@ class TmdbMovieMapperTest {
 
         assertThat(media.getExternalRatingCount())
                 .isEqualTo(38000);
+        assertThat(media.getPosterPath())
+                .isEqualTo("/poster.jpg");
 
     }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import PosterArtwork from "../components/PosterArtwork";
 
 import {
   getMedia,
@@ -280,6 +281,7 @@ export default function DiscoverPage() {
                   </span>
 
                   <span className="poster-text">{item.title}</span>
+                  <PosterArtwork url={item.posterUrl} />
                 </div>
 
                 <div className="media-card-info">

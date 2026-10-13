@@ -421,6 +421,29 @@ input:focus-visible {
   box-shadow: 0 0 55px #ffffff16;
 }
 
+.poster-image {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.poster-image.is-loaded {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster-image {
+    transition: none;
+  }
+}
+
 .poster-crimson {
   background: linear-gradient(145deg, #160b10, #8a1c3c 54%, #190f19);
 }

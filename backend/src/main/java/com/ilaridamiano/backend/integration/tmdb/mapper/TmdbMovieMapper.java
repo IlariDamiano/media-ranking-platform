@@ -32,6 +32,7 @@ public class TmdbMovieMapper {
         media.setPopularityScore(response.popularity());
         media.setExternalRating(response.voteAverage());
         media.setExternalRatingCount(response.voteCount());
+        media.setPosterPath(response.posterPath());
     }
 
 }
