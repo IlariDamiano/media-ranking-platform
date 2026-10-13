@@ -199,4 +199,37 @@ class AuthIntegrationTest {
                 .andExpect(status().isForbidden());
 
     }
+
+    @Test
+    void validatesMinimumPasswordLength() throws Exception {
+
+        String id = UUID.randomUUID().toString();
+
+        // Exactly 9 characters: accepted.
+        mvc.perform(post("/api/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                          "username": "NineCharUser",
+                          "email": "nine-%s@example.com",
+                          "password": "abcdefghi"
+                        }
+                        """.formatted(id)))
+                .andExpect(status().isCreated());
+
+        // Only 8 characters: rejected.
+        mvc.perform(post("/api/auth/register")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                          "username": "EightCharUser",
+                          "email": "eight-%s@example.com",
+                          "password": "abcdefgh"
+                        }
+                        """.formatted(id)))
+                .andExpect(status().isBadRequest());
+    }
+
 }

@@ -1,6 +1,31 @@
-import { Link, NavLink, Outlet } from "react-router";
+import { useState } from "react";
+import { Link, NavLink, Outlet, useNavigate } from "react-router";
+
+import { useAuth } from "../context/authStore";
 
 export default function SiteLayout() {
+  const navigate = useNavigate();
+  const { user, loading, signOut } = useAuth();
+
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+
+  async function handleLogout() {
+    if (loggingOut) return;
+
+    setLoggingOut(true);
+    setLogoutError("");
+
+    try {
+      await signOut();
+      navigate("/", { replace: true });
+    } catch {
+      setLogoutError("Unable to log out. Please try again.");
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
@@ -31,7 +56,46 @@ export default function SiteLayout() {
           <NavLink to="/lists">Lists</NavLink>
         </nav>
 
-        <span className="nav-caption">VOL. 001</span>
+        <div className="nav-actions">
+          <span className="nav-caption">VOL. 001</span>
+
+          {loading ? (
+            <span className="nav-session-status" role="status">
+              Checking session...
+            </span>
+          ) : user ? (
+            <>
+              <span className="nav-username" title={user.username}>
+                {user.username}
+              </span>
+
+              <button
+                type="button"
+                className="nav-logout"
+                onClick={handleLogout}
+                disabled={loggingOut}
+              >
+                {loggingOut ? "Signing out..." : "Logout"}
+              </button>
+            </>
+          ) : (
+            <>
+              <NavLink to="/login" className="nav-login">
+                Login
+              </NavLink>
+
+              <NavLink to="/register" className="nav-register">
+                Register
+              </NavLink>
+            </>
+          )}
+
+          {logoutError && (
+            <span className="nav-auth-error" role="alert">
+              {logoutError}
+            </span>
+          )}
+        </div>
       </header>
 
       <main id="main-content" className="page-container">
