@@ -9,7 +9,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
+import com.ilaridamiano.backend.user.entity.UserProfile;
+import com.ilaridamiano.backend.user.repository.UserProfileRepository;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
@@ -19,6 +20,7 @@ public class AuthService {
 
     private final AppUserRepository repository;
     private final PasswordEncoder passwordEncoder;
+    private final UserProfileRepository profileRepository;
 
     @Transactional
     public AppUser register(RegisterRequest request) {
@@ -47,7 +49,15 @@ public class AuthService {
 
         AppUser user = new AppUser(username, email, hash);
 
-        return repository.save(user);
+        // Persist the account first so it receives its UUID.
+        AppUser savedUser = repository.save(user);
+
+        // Create the matching public profile.
+        UserProfile profile = new UserProfile(savedUser);
+        profileRepository.save(profile);
+
+        return savedUser;
+
     }
 
 
