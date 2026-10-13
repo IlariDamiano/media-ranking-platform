@@ -1,30 +1,9 @@
-import { useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router";
+import { Link, NavLink, Outlet } from "react-router";
 
 import { useAuth } from "../context/authStore";
 
 export default function SiteLayout() {
-  const navigate = useNavigate();
-  const { user, loading, signOut } = useAuth();
-
-  const [loggingOut, setLoggingOut] = useState(false);
-  const [logoutError, setLogoutError] = useState("");
-
-  async function handleLogout() {
-    if (loggingOut) return;
-
-    setLoggingOut(true);
-    setLogoutError("");
-
-    try {
-      await signOut();
-      navigate("/", { replace: true });
-    } catch {
-      setLogoutError("Unable to log out. Please try again.");
-    } finally {
-      setLoggingOut(false);
-    }
-  }
+  const { user, loading } = useAuth();
 
   return (
     <div className="app-shell">
@@ -64,20 +43,19 @@ export default function SiteLayout() {
               Checking session...
             </span>
           ) : user ? (
-            <>
+            <Link
+              to="/dashboard"
+              className="nav-account-link"
+              aria-label={`Go to your dashboard, ${user.username}`}
+            >
+              <span className="nav-account-avatar" aria-hidden="true">
+                {user.username.charAt(0).toUpperCase()}
+              </span>
+
               <span className="nav-username" title={user.username}>
                 {user.username}
               </span>
-
-              <button
-                type="button"
-                className="nav-logout"
-                onClick={handleLogout}
-                disabled={loggingOut}
-              >
-                {loggingOut ? "Signing out..." : "Logout"}
-              </button>
-            </>
+            </Link>
           ) : (
             <>
               <NavLink to="/login" className="nav-login">
@@ -88,12 +66,6 @@ export default function SiteLayout() {
                 Register
               </NavLink>
             </>
-          )}
-
-          {logoutError && (
-            <span className="nav-auth-error" role="alert">
-              {logoutError}
-            </span>
           )}
         </div>
       </header>

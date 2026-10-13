@@ -60,6 +60,8 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/profiles/*")
+                        .permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 "/api/auth/register",
                                 "/api/auth/login")

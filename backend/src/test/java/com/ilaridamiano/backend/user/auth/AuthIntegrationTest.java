@@ -15,7 +15,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.ilaridamiano.backend.user.entity.UserProfile;
+import com.ilaridamiano.backend.user.entity.ProfileVisibility;
+import com.ilaridamiano.backend.user.repository.UserProfileRepository;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,6 +37,9 @@ class AuthIntegrationTest {
 
     @Autowired
     private AppUserRepository users;
+
+    @Autowired
+    private UserProfileRepository profiles;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -68,6 +73,20 @@ class AuthIntegrationTest {
         assertThat(passwordEncoder.matches(
                 password, saved.getPasswordHash()
         )).isTrue();
+
+// Ensure the profile is actually persisted.
+        profiles.flush();
+
+        UserProfile profile = profiles.findById(saved.getId())
+                .orElseThrow();
+
+        assertThat(profile.getUserId()).isEqualTo(saved.getId());
+        assertThat(profile.getVisibility())
+                .isEqualTo(ProfileVisibility.PUBLIC);
+
+        assertThat(profile.getBio()).isNull();
+        assertThat(profile.getAvatarKey()).isNull();
+
     }
 
     @Test
