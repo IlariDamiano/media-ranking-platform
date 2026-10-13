@@ -91,6 +91,10 @@ public class Media {
     @Column(name = "last_synced_at")
     private Instant lastSyncedAt;
 
+    @Setter
+    @Column(name = "poster_path", length = 500)
+    private String posterPath;
+
     public Media(String title, MediaType mediaType) {
         this.title = Objects.requireNonNull(title, "Title cannot be null");
         this.mediaType = Objects.requireNonNull(mediaType, "Media type cannot be null");

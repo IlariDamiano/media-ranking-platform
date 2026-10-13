@@ -64,9 +64,13 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/auth/login")
                         .permitAll()
-                        .requestMatchers(HttpMethod.POST,
-                                "/api/media/import/tmdb/movies/*")
-                        .hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/media/import/tmdb/movies/*",
+                                "/api/media/refresh/tmdb/movies/*"
+                        ).hasRole("ADMIN")
+
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,

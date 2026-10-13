@@ -20,11 +20,7 @@ public class MediaService {
     public List<MediaSummaryResponse> findAll() {
         return mediaRepository.findAll()
                 .stream()
-                .map(media -> new MediaSummaryResponse(
-                        media.getId(),
-                        media.getTitle(),
-                        media.getMediaType()
-                ))
+                .map(MediaSummaryResponse::fromMedia)
                 .toList();
     }
 
@@ -44,22 +40,14 @@ public class MediaService {
             );
         }
 
-        return mediaPage.map(media -> new MediaSummaryResponse(
-                media.getId(),
-                media.getTitle(),
-                media.getMediaType()
-        ));
+        return mediaPage.map(MediaSummaryResponse::fromMedia);
     }
 
     public List<MediaSummaryResponse> searchByTitle(String query) {
 
         return mediaRepository.searchByRelevance(query)
                 .stream()
-                .map(media -> new MediaSummaryResponse(
-                        media.getId(),
-                        media.getTitle(),
-                        media.getMediaType()
-                ))
+                .map(MediaSummaryResponse::fromMedia)
                 .toList();
     }
 

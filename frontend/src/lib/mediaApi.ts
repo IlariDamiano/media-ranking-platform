@@ -10,6 +10,7 @@ export interface MediaSummary {
   id: string;
   title: string;
   mediaType: MediaType;
+  posterUrl: string | null;
 }
 
 export interface MediaPage {

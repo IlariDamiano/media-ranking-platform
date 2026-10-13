@@ -192,5 +192,11 @@ class AuthIntegrationTest {
                         .with(user("reader").roles("USER"))
                         .with(csrf()))
                 .andExpect(status().isForbidden());
+
+        mvc.perform(post("/api/media/refresh/tmdb/movies/157336")
+                        .with(user("reader").roles("USER"))
+                        .with(csrf()))
+                .andExpect(status().isForbidden());
+
     }
 }

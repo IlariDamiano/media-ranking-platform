@@ -57,11 +57,16 @@ public class MediaController {
     ) {
         Media imported = tmdbImportService.importMovie(tmdbId);
 
-        return new MediaSummaryResponse(
-                imported.getId(),
-                imported.getTitle(),
-                imported.getMediaType()
-        );
+        return MediaSummaryResponse.fromMedia(imported);
+    }
+
+    @PostMapping("/refresh/tmdb/movies/{tmdbId}")
+    public MediaSummaryResponse refreshTmdbMovie(
+            @PathVariable Long tmdbId
+    ) {
+        Media refreshed = tmdbImportService.refreshMovie(tmdbId);
+
+        return MediaSummaryResponse.fromMedia(refreshed);
     }
 
     @GetMapping("/search")
